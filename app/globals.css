@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --background: #121211;
+  --card: #1c1b19;
+  --border: #2c2a27;
+  --foreground: #f2ede4;
+  --muted: #a8a196;
+  --accent: #f08a3c;
+  --status-progress: #6fa8ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-status-progress: var(--status-progress);
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-archivo), Arial, Helvetica, sans-serif;
+}

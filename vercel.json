@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-brief",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/promo-followup",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/social-publish",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/trendy-scan",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 9 * * 1"
+    }
+  ]
+}
