@@ -42,7 +42,7 @@ export default function ApprovalItem({ approval }: { approval: Approval }) {
         <summary className="cursor-pointer font-mono text-[11px] text-muted">
           Podgląd
         </summary>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-card p-3 font-mono text-[11px] text-foreground/80">
+        <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-card p-3 font-mono text-[11px] text-foreground/80">
           {JSON.stringify(approval.payload, null, 2)}
         </pre>
       </details>

@@ -1,6 +1,6 @@
 # Menago
 
-Panel agentów do prowadzenia kariery muzycznej — Haipeson × Winiu.
+Panel agentów do prowadzenia kariery muzycznej — Funkmaster Winio x Haipeson.
 Pełna specyfikacja: [`MENAGO_SPEC.md`](./MENAGO_SPEC.md).
 
 ## Start lokalny
@@ -118,6 +118,26 @@ dało się od razu przejrzeć UI.
   - Obrazy tylko JPEG; karuzela 2–20 elementów.
 - Bez skonfigurowanego Instagrama plan contentu i szkice nadal powstają w
   bazie — po prostu cron publikujący nic nie robi, dopóki nie uzupełnisz env.
+
+## Agent Analityk — wyświetlenia IG / Facebook / TikTok
+
+- Agent Analityk (`lib/agents/analityk.ts`) dodatkowo pobiera realne
+  wyświetlenia/zasięg z trzech platform, jeśli są skonfigurowane:
+  - **Instagram** (`lib/instagram.ts`, `getAccountInsights` + `getRecentMediaViews`)
+    — ten sam token/konto co publikacja postów (`IG_USER_ID` / `IG_ACCESS_TOKEN`),
+    uprawnienie `instagram_manage_insights`.
+  - **Facebook (fanpage)** (`lib/facebook.ts`) — strona połączona z kontem IG,
+    ten sam token (uprawnienia `pages_read_engagement`, `read_insights`),
+    dodatkowo potrzebny `FB_PAGE_ID`.
+  - **TikTok** (`lib/tiktok.ts`) — osobna aplikacja w
+    [TikTok for Developers](https://developers.tiktok.com/), Login Kit +
+    Display API (scope `user.info.basic,video.list`). TikTok wydaje
+    `access_token` tylko na 24h, a refresh_token rotuje przy każdym
+    odświeżeniu — kod odświeża go automatycznie i próbuje nadpisać
+    `.env.local` (działa lokalnie; na read-only hostingu token z danego
+    requestu zadziała, ale trzeba ręcznie zaktualizować env po rotacji).
+- Brak konfiguracji dla danej platformy = Analityk po prostu wspomina w
+  raporcie, że nie jest podłączona — nic się nie wywala.
 
 ## Agent Trendy (krok 7)
 

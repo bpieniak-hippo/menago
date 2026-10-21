@@ -5,8 +5,11 @@ const NAV_ITEMS = [
   { href: "/projects", label: "Projekty" },
   { href: "/agents", label: "Agenci" },
   { href: "/promo", label: "Promo" },
+  { href: "/inbox", label: "Poczta" },
   { href: "/calendar", label: "Kalendarz" },
+  { href: "/social", label: "Social media" },
   { href: "/trendy", label: "Trendy" },
+  { href: "/archive", label: "Archiwum" },
 ];
 
 export default function Header() {
@@ -15,7 +18,7 @@ export default function Header() {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-widest text-muted">
-            Haipeson × Winiu
+            Funkmaster Winio x Haipeson
           </p>
           <h1 className="text-lg font-semibold">Menago · sztab</h1>
         </div>

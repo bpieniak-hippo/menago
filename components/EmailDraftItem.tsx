@@ -7,7 +7,13 @@ interface EmailPayload {
   body?: string;
 }
 
-export default function EmailDraftItem({ approval }: { approval: Approval }) {
+export default function EmailDraftItem({
+  approval,
+  returnTo,
+}: {
+  approval: Approval;
+  returnTo?: string;
+}) {
   const payload = approval.payload as EmailPayload;
 
   return (
@@ -20,12 +26,14 @@ export default function EmailDraftItem({ approval }: { approval: Approval }) {
         <div className="flex shrink-0 gap-2">
           <form action={rejectApproval}>
             <input type="hidden" name="id" value={approval.id} />
+            {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
             <button className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition hover:text-foreground">
               Odrzuć
             </button>
           </form>
           <form action={approveApproval}>
             <input type="hidden" name="id" value={approval.id} />
+            {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
             <button className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-background transition hover:opacity-90">
               Zatwierdź i wyślij
             </button>

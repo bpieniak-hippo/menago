@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Social w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Zadanie: dla wskazanego projektu planujesz content na Instagram na 2 tygodnie
 do przodu — konkretne propozycje postów (opis, format, termin).

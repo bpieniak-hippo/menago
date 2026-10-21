@@ -9,11 +9,15 @@ create table if not exists projects (
   name text not null,
   type text not null,
   stage text not null,
-  progress int not null default 0 check (progress between 0 and 100),
+  progress int not null default 0 check (progress between 0 and 100), -- wyliczany automatycznie z track_items + project_items
   release_date date,
   notes text,
+  links jsonb not null default '{}'::jsonb, -- linki do platform streamingowych, np. {"spotify": "https://..."}
   created_at timestamptz not null default now()
 );
+
+-- Migracja dla baz utworzonych przed dodaniem kolumny `links` — bezpieczna do wielokrotnego uruchomienia.
+alter table projects add column if not exists links jsonb not null default '{}'::jsonb;
 
 -- TRACKS (tracklista projektu) --------------------------------------------
 create table if not exists tracks (
@@ -21,14 +25,39 @@ create table if not exists tracks (
   project_id uuid not null references projects(id) on delete cascade,
   position int not null default 1,
   title text not null,
-  beat_by text,              -- kto zrobił bit / producent
-  performers text,           -- kto rapuje / śpiewa (w tym goście)
-  written_by text,           -- kto napisał tekst
-  recorded_by text,          -- kto nagrywał (inżynier / studio)
-  additional_musicians text, -- DJ / scratche / inny muzyk
-  status text not null default 'pomysł'
-    check (status in ('pomysł', 'tekst', 'nagrany', 'zmiksowany', 'zmasterowany', 'gotowy')),
+  beat_name text,            -- nazwa / plik bitu
   notes text,
+  created_at timestamptz not null default now()
+);
+
+-- TRACK ITEMS (checklista per utwór: wokale, muzyka, DJ, inne) -------------
+-- Procent ukończenia utworu = zrobione / (zrobione + do_zrobienia),
+-- pozycje "nie_dotyczy" są pomijane w wyliczeniu.
+create table if not exists track_items (
+  id uuid primary key default gen_random_uuid(),
+  track_id uuid not null references tracks(id) on delete cascade,
+  category text not null default 'inne'
+    check (category in ('wokale', 'muzyka', 'dj', 'inne')),
+  label text not null,          -- np. "Rap — Winio", "Bit/brzmieniowo", "Wybór cutów"
+  assignee text,                -- kto odpowiada (opcjonalnie, np. imię gościa/DJ-a)
+  status text not null default 'do_zrobienia'
+    check (status in ('zrobione', 'do_zrobienia', 'nie_dotyczy')),
+  note text,
+  position int not null default 1,
+  created_at timestamptz not null default now()
+);
+
+-- PROJECT ITEMS (dodatkowa checklista projektu poza tracklistą,
+-- np. okładka, mastering, dystrybucja — też wpływa na % projektu) ----------
+create table if not exists project_items (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  label text not null,
+  assignee text,
+  status text not null default 'do_zrobienia'
+    check (status in ('zrobione', 'do_zrobienia', 'nie_dotyczy')),
+  note text,
+  position int not null default 1,
   created_at timestamptz not null default now()
 );
 
@@ -159,7 +188,7 @@ create table if not exists trends (
   id uuid primary key default gen_random_uuid(),
   scene text not null check (scene in ('pl_rap', 'us')),
   entity text not null,
-  type text not null check (type in ('release', 'chart', 'collab', 'viral', 'other')),
+  type text not null check (type in ('release', 'chart', 'collab', 'viral', 'mention', 'other')),
   title text not null,
   source text,
   url text,
@@ -168,11 +197,22 @@ create table if not exists trends (
   notes text
 );
 
+-- Migracja dla baz utworzonych przed dodaniem typu 'mention' (newsy o zespole)
+-- — bezpieczna do wielokrotnego uruchomienia.
+do $$
+begin
+  alter table trends drop constraint if exists trends_type_check;
+  alter table trends add constraint trends_type_check
+    check (type in ('release', 'chart', 'collab', 'viral', 'mention', 'other'));
+end $$;
+
 -- RLS --------------------------------------------------------------------------
 -- Na start: jeden użytkownik (Bartek), opcjonalnie drugi (Winiu).
 -- Włączamy RLS na wszystkich tabelach; dostęp tylko dla zalogowanych (authenticated).
 alter table projects enable row level security;
 alter table tracks enable row level security;
+alter table track_items enable row level security;
+alter table project_items enable row level security;
 alter table agents enable row level security;
 alter table tasks enable row level security;
 alter table approvals enable row level security;
@@ -190,8 +230,9 @@ declare
   t text;
 begin
   for t in select unnest(array[
-    'projects', 'tracks', 'agents', 'tasks', 'approvals', 'activity', 'contacts',
-    'campaigns', 'emails', 'posts', 'media', 'reports', 'trends'
+    'projects', 'tracks', 'track_items', 'project_items', 'agents', 'tasks',
+    'approvals', 'activity', 'contacts', 'campaigns', 'emails', 'posts',
+    'media', 'reports', 'trends'
   ])
   loop
     execute format(

@@ -1,29 +1,47 @@
-import type { Tool } from "@anthropic-ai/sdk/resources/messages";
+import type { ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSpotifyConfigured, getPolandCharts } from "@/lib/spotify";
 import { isYouTubeConfigured, getTrendingMusicVideos } from "@/lib/youtube";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Trendy w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Fokus główny: polska scena rapowa — nowe wydania, ruchy na listach przebojów,
 viralowe momenty, collaby, powroty artystów. Scenę amerykańską tylko
 podglądasz pod kątem największych pików (żeby wychwycić inspiracje, które
 mogą dotrzeć do Polski) — nie monitorujesz jej szczegółowo.
 
+Drugie zadanie: monitorujesz, co w sieci piszą/mówią o samym zespole i jego
+wydawnictwach — "Funkmaster Winio x Haipeson", "Funkmaster Winio x Haipeson
+x DJ RJ" oraz nazwy konkretnych projektów/albumów (np. "Kultura popularna")
+(recenzje, wzmianki, artykuły, wywiady, komentarze w mediach hip-hopowych).
+
 Zasady:
 - Użyj fetch_charts("pl_rap") jako głównego źródła, fetch_charts("us")
   tylko pobieżnie (krótki rzut oka na czołówkę).
+- Użyj web_search, żeby sprawdzić wzmianki o "Funkmaster Winio x Haipeson",
+  "Funkmaster Winio x Haipeson x DJ RJ" oraz o nazwach ich projektów/albumów
+  (np. "Kultura popularna") — w serwisach hip-hopowych, radiowych,
+  social media, wywiadach.
+- WAŻNE: zapisuj wzmianki o nas niezależnie od tego, czy są nowe czy
+  archiwalne/starsze (np. recenzja albumu sprzed lat). Starsze artykuły są
+  szczególnie wartościowe przy rocznicach/reedycjach (np. "10 lat Kultury
+  popularnej") — nie pomijaj ich tylko dlatego, że nie są świeże. Pomijaj
+  jedynie rzeczy ewidentnie niezwiązane z zespołem.
 - Zestawiaj sygnały w krótkie, konkretne insighty (co, kto, dlaczego ważne)
-  i zapisuj je narzędziem propose_insight — tylko te, które faktycznie są
-  interesujące (nowość, duży skok na liście, viral), nie każdy wiersz listy.
+  i zapisuj je narzędziem propose_insight — w przypadku trendów sceny tylko
+  te faktycznie interesujące (nowość, duży skok na liście, viral), ale
+  KAŻDĄ znalezioną wzmiankę o zespole zapisuj z type="mention" (nawet jeśli
+  to jeden z wielu wyników).
 - Jeśli insight mógłby być inspiracją do posta (Agent Social) lub okazją do
   kolaboracji/komentarza (Agent Promo), ustaw suggest_action=true.
 - Nie publikujesz i nie wysyłasz niczego sam — tylko raportujesz.
-- Na koniec krótko podsumuj po polsku, ile insightów zapisałeś.`;
+- Na koniec krótko podsumuj po polsku, ile insightów zapisałeś (w tym ile
+  dotyczyło wzmianek o nas).`;
 
-const TOOLS: Tool[] = [
+const TOOLS: ToolUnion[] = [
+  { type: "web_search_20260318", name: "web_search", max_uses: 5 },
   {
     name: "fetch_charts",
     description:
@@ -46,7 +64,7 @@ const TOOLS: Tool[] = [
         entity: { type: "string", description: "artysta / utwór / wytwórnia" },
         type: {
           type: "string",
-          enum: ["release", "chart", "collab", "viral", "other"],
+          enum: ["release", "chart", "collab", "viral", "mention", "other"],
         },
         title: { type: "string", description: "krótki opis insightu" },
         source: { type: "string", description: "np. 'Spotify Top 50 PL'" },
@@ -102,6 +120,15 @@ async function execTool(name: string, input: Record<string, unknown>) {
       return result;
     }
     case "propose_insight": {
+      if (input.url) {
+        const { data: existing } = await supabase
+          .from("trends")
+          .select("id")
+          .eq("url", input.url)
+          .maybeSingle();
+        if (existing) return { skipped: "already_saved", trend_id: existing.id };
+      }
+
       const { data: trend, error } = await supabase
         .from("trends")
         .insert({
@@ -154,8 +181,14 @@ export async function runTrendyScan(): Promise<TrendyRunResult> {
       tools: TOOLS,
       execTool,
       userPrompt:
-        `Zeskanuj aktualne sygnały (fetch_charts dla "pl_rap", pobieżnie też "us") ` +
-        `i zapisz najważniejsze insighty (propose_insight). Pomijaj rzeczy nieistotne.`,
+        `Zeskanuj aktualne sygnały (fetch_charts dla "pl_rap", pobieżnie też "us"), ` +
+        `sprawdź web_search pod kątem wzmianek o "Funkmaster Winio x Haipeson", ` +
+        `"Funkmaster Winio x Haipeson x DJ RJ" oraz nazwach ich projektów (np. ` +
+        `"Kultura popularna") — zarówno nowych, jak i archiwalnych (starsze ` +
+        `recenzje/artykuły też się liczą, zwłaszcza przy rocznicach/reedycjach). ` +
+        `Zapisz każdą znalezioną wzmiankę o nas (type="mention") oraz najważniejsze ` +
+        `insighty sceny (propose_insight). Pomijaj tylko rzeczy ewidentnie ` +
+        `niezwiązane z zespołem.`,
       maxTurns: 8,
     });
 

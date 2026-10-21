@@ -5,8 +5,8 @@ import ApprovalItem from "@/components/ApprovalItem";
 import ProjectCard from "@/components/ProjectCard";
 import ActivityFeed from "@/components/ActivityFeed";
 import {
+  getActivityForAgent,
   getAgents,
-  getLatestManagerBrief,
   getPendingApprovals,
   getProjects,
   getRecentActivity,
@@ -14,6 +14,7 @@ import {
 
 const MANAGER_MESSAGES: Record<string, string> = {
   ok: "Agent Manager wykonał polecenie — sprawdź aktywność poniżej.",
+  advice_ok: "Agent Manager przygotował radę — zobacz brief powyżej.",
   no_db:
     "Polecenia managera wymagają skonfigurowanego Supabase (service role) — zobacz README.",
   no_key: "Brak ANTHROPIC_API_KEY — nie można uruchomić Agenta Managera.",
@@ -35,13 +36,13 @@ export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
   const params = await searchParams;
-  const [agents, approvals, projects, activity, dailyBrief] =
+  const [agents, approvals, projects, activity, managerActivity] =
     await Promise.all([
       getAgents(),
       getPendingApprovals(),
       getProjects(),
       getRecentActivity(),
-      getLatestManagerBrief(),
+      getActivityForAgent("manager", 3),
     ]);
 
   const banner =
@@ -58,11 +59,7 @@ export default async function DashboardPage({
           </div>
         )}
 
-        <ManagerBrief
-          agents={agents}
-          approvals={approvals}
-          dailyBrief={dailyBrief}
-        />
+        <ManagerBrief approvals={approvals} managerActivity={managerActivity} />
 
         <section>
           <h2 className="mb-3 text-base font-semibold">Agenci</h2>

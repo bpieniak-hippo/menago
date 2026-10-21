@@ -28,7 +28,7 @@ const SUB_AGENT_SLUGS: AgentSlug[] = [
 ];
 
 const SYSTEM_PROMPT = `Jesteś Agentem Managerem w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu. Koordynujesz pracę agentów
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap). Koordynujesz pracę agentów
 specjalistycznych: album, social, promo, wydawniczy, analityk, katalog, trendy.
 
 Zasady:
@@ -94,6 +94,14 @@ const TOOLS: Tool[] = [
       },
       required: ["agent_slug", "task"],
     },
+  },
+  {
+    name: "read_checklist_summary",
+    description:
+      "Dla każdego projektu: tracklista (liczba utworów) oraz lista konkretnych " +
+      "elementów checklisty 'do zrobienia' i 'zrobione' (z tracklisty i elementów " +
+      "projektu typu okładka/mastering). Użyj do oceny, co realnie blokuje projekt.",
+    input_schema: { type: "object", properties: {} },
   },
 ];
 
@@ -176,6 +184,64 @@ async function execTool(name: string, input: Record<string, unknown>) {
       });
       return { delegated: true, executed: true, result: result.summary };
     }
+    case "read_checklist_summary": {
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, name, type, stage, release_date, progress");
+      const { data: tracks } = await supabase
+        .from("tracks")
+        .select("id, project_id, title");
+      const trackIds = (tracks ?? []).map((t) => t.id as string);
+
+      let trackItems: { track_id: string; label: string; status: string }[] = [];
+      if (trackIds.length > 0) {
+        const { data } = await supabase
+          .from("track_items")
+          .select("track_id, label, status")
+          .in("track_id", trackIds);
+        trackItems = data ?? [];
+      }
+
+      const { data: projectItems } = await supabase
+        .from("project_items")
+        .select("project_id, label, status");
+
+      const tracksByProject = new Map<string, { id: string; title: string }[]>();
+      for (const t of tracks ?? []) {
+        const list = tracksByProject.get(t.project_id) ?? [];
+        list.push({ id: t.id, title: t.title });
+        tracksByProject.set(t.project_id, list);
+      }
+      const trackTitleById = new Map((tracks ?? []).map((t) => [t.id, t.title]));
+
+      return (projects ?? []).map((p) => {
+        const projectTracks = tracksByProject.get(p.id) ?? [];
+        const trackIdSet = new Set(projectTracks.map((t) => t.id));
+        const relevantTrackItems = trackItems.filter((i) => trackIdSet.has(i.track_id));
+        const relevantProjectItems = (projectItems ?? []).filter(
+          (i) => i.project_id === p.id,
+        );
+        const allItems = [...relevantTrackItems, ...relevantProjectItems];
+        const todo = allItems
+          .filter((i) => i.status === "do_zrobienia")
+          .map((i) =>
+            "track_id" in i && i.track_id
+              ? `${trackTitleById.get(i.track_id) ?? "?"} — ${i.label}`
+              : i.label,
+          );
+        return {
+          project_id: p.id,
+          name: p.name,
+          type: p.type,
+          stage: p.stage,
+          release_date: p.release_date,
+          progress: p.progress,
+          track_count: projectTracks.length,
+          todo_count: todo.length,
+          todo_items: todo.slice(0, 10),
+        };
+      });
+    }
     default:
       return { error: `Nieznane narzędzie: ${name}` };
   }
@@ -237,6 +303,25 @@ export async function runDailyBrief(): Promise<ManagerRunResult> {
       `(read_projects, read_approvals, read_activity), a potem napisz krótkie podsumowanie ` +
       `(3-5 zdań po polsku): co czeka na decyzję użytkownika, co robią agenci, jakie są priorytety na dziś. ` +
       `Nie twórz nowych zadań — to tylko raport.`,
+    "report",
+  );
+}
+
+/**
+ * Proaktywne doradztwo na żądanie — Manager sam analizuje stan wszystkich
+ * projektów (etapy, terminy, tracklisty, checklisty) i wskazuje konkretne
+ * następne kroki, bez czekania na polecenie użytkownika ani na cron.
+ */
+export async function runManagerAdvice(): Promise<ManagerRunResult> {
+  return run(
+    `Przeanalizuj stan wszystkich projektów: etapy, terminy premier, tracklisty ` +
+      `i checklisty (read_projects, read_checklist_summary), a także kolejkę zatwierdzeń ` +
+      `i ostatnią aktywność (read_approvals, read_activity). ` +
+      `Napisz po polsku 3-6 konkretnych, praktycznych rekomendacji: co zrobić najpierw, ` +
+      `które projekty są zagrożone (zbliżający się termin premiery a dużo zaległych zadań ` +
+      `w checkliście), gdzie warto uruchomić lub przyspieszyć kampanię promo/social. ` +
+      `Bądź konkretny — podawaj nazwy projektów i utworów/elementów, nie ogólniki. ` +
+      `Nie twórz zadań ani nie deleguj — to tylko rada.`,
     "report",
   );
 }

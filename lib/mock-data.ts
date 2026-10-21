@@ -12,6 +12,7 @@ export const mockProjects: Project[] = [
     progress: 60,
     release_date: "2026-12-05",
     notes: "Czekamy na finalny mix od Winia, potem master i okładka.",
+    links: {},
     created_at: new Date().toISOString(),
   },
   {
@@ -23,6 +24,7 @@ export const mockProjects: Project[] = [
     release_date: null,
     notes:
       "Rocznica premiery: 17.10.2016. Plan: akcja rocznicowa w social media + pitch do mediów.",
+    links: {},
     created_at: new Date().toISOString(),
   },
 ];

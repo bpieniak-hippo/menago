@@ -1,30 +1,56 @@
-import type { Tool } from "@anthropic-ai/sdk/resources/messages";
+import type { ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDraft, isGmailConfigured } from "@/lib/google/gmail";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Promo w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Zadanie: dla wskazanego projektu tworzysz plan kampanii promocyjnej (4 fazy:
-przygotowanie, pitching, premiera, follow-up) i piszesz spersonalizowane
-szkice maili do pasujących kontaktów z bazy.
+przygotowanie, pitching, premiera, follow-up), piszesz spersonalizowane
+szkice maili do pasujących kontaktów z bazy, a jeśli brakuje kontaktów —
+wyszukujesz nowe (małe i duże stacje radiowe, portale hip-hopowe/muzyczne).
 
 Zasady:
 - Najpierw create_campaign z polem plan = {"phases":[{"name":...,"description":...},...]}
   (dokładnie 4 fazy).
-- Potem read_contacts, wybierz kontakty pasujące do projektu (media, radio,
-  playlist, portal — pomiń te bez adresu email) i dla każdego wywołaj
-  draft_email z spersonalizowaną treścią po polsku, krótką i konkretną.
+- Potem read_contacts. Jeśli kontaktów pasujących do gatunku (radio, portale,
+  playlisty hip-hop/rap) jest mało, użyj web_search (np. "polskie radio
+  internetowe hip hop kontakt", "portal hip hop rap redakcja kontakt mail"),
+  znajdź nazwę, typ i — jeśli jest publicznie dostępny — adres email, i dodaj
+  je narzędziem propose_contact. Szukaj zarówno małych, niszowych miejsc, jak
+  i większych redakcji/rozgłośni.
+- Dla kontaktów z adresem email wywołaj draft_email ze spersonalizowaną
+  treścią po polsku, krótką i konkretną.
 - Nigdy nie wysyłasz maili sam — draft_email tylko tworzy szkic, wysyłka
   wymaga zatwierdzenia użytkownika w kolejce approvals.
-- Na koniec krótko podsumuj po polsku, co zrobiłeś (ile szkiców, do kogo).`;
+- Na koniec krótko podsumuj po polsku, co zrobiłeś (ile nowych kontaktów, ile szkiców, do kogo).`;
 
-const TOOLS: Tool[] = [
+const TOOLS: ToolUnion[] = [
+  { type: "web_search_20260318", name: "web_search", max_uses: 5 },
   {
     name: "read_contacts",
     description: "Lista kontaktów z bazy (media, radio, playlisty, portale).",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "propose_contact",
+    description:
+      "Dodaje nowy kontakt znaleziony przez web_search (radio, portal, media, playlist, youtube, podcast).",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        outlet: { type: "string", description: "nazwa stacji/portalu/redakcji" },
+        type: {
+          type: "string",
+          enum: ["media", "radio", "youtube", "playlist", "podcast", "portal"],
+        },
+        email: { type: "string", description: "opcjonalnie, jeśli publicznie dostępny" },
+        notes: { type: "string" },
+      },
+      required: ["name", "outlet", "type"],
+    },
   },
   {
     name: "create_campaign",
@@ -143,6 +169,27 @@ async function execTool(name: string, input: Record<string, unknown>) {
     case "read_contacts": {
       const { data } = await supabase.from("contacts").select("*");
       return data ?? [];
+    }
+    case "propose_contact": {
+      const { data, error } = await supabase
+        .from("contacts")
+        .insert({
+          name: input.name,
+          outlet: input.outlet,
+          type: input.type,
+          email: input.email ?? null,
+          notes: input.notes ?? null,
+        })
+        .select()
+        .single();
+      if (error) return { error: error.message };
+      await supabase.from("activity").insert({
+        agent_slug: "promo",
+        message: `Znaleziono nowy kontakt: ${input.outlet} (${input.type}).`,
+        ref_type: "contact",
+        ref_id: data?.id ?? null,
+      });
+      return data;
     }
     case "create_campaign": {
       const { data, error } = await supabase

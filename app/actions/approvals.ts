@@ -7,16 +7,20 @@ import { decideApproval } from "@/lib/approvals";
 
 async function handle(formData: FormData, decision: "approved" | "rejected") {
   const id = String(formData.get("id") ?? "");
-  if (!id) redirect("/");
+  const returnTo = String(formData.get("return_to") ?? "") || "/";
+  if (!id) redirect(returnTo);
 
   if (!isAdminConfigured()) {
-    redirect("/?approvals=no_db");
+    redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}approvals=no_db`);
   }
 
   const result = await decideApproval(id, decision);
   revalidatePath("/");
   revalidatePath("/promo");
-  redirect(`/?approvals=${result.ok ? decision : "error"}`);
+  revalidatePath(returnTo.split("?")[0]);
+  redirect(
+    `${returnTo}${returnTo.includes("?") ? "&" : "?"}approvals=${result.ok ? decision : "error"}`,
+  );
 }
 
 export async function approveApproval(formData: FormData) {
