@@ -29,6 +29,14 @@ export async function createProject(formData: FormData) {
   redirect(`/projects/${data.id}`);
 }
 
+const STREAMING_PLATFORMS = [
+  "spotify",
+  "apple_music",
+  "youtube_music",
+  "tidal",
+  "soundcloud",
+] as const;
+
 export async function updateProject(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id || !isAdminConfigured()) redirect("/projects");
@@ -37,24 +45,24 @@ export async function updateProject(formData: FormData) {
   const type = String(formData.get("type") ?? "").trim();
   const stage = String(formData.get("stage") ?? "").trim();
   const release_date = String(formData.get("release_date") ?? "") || null;
-  const progress = Number(formData.get("progress") ?? 0);
   const notes = String(formData.get("notes") ?? "") || null;
+
+  const links: Record<string, string> = {};
+  for (const platform of STREAMING_PLATFORMS) {
+    const value = String(formData.get(`link_${platform}`) ?? "").trim();
+    if (value) links[platform] = value;
+  }
+
+  const tab = String(formData.get("tab") ?? "") || null;
 
   const supabase = createAdminClient();
   await supabase
     .from("projects")
-    .update({
-      name,
-      type,
-      stage,
-      release_date,
-      progress: Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : 0,
-      notes,
-    })
+    .update({ name, type, stage, release_date, notes, links })
     .eq("id", id);
 
   revalidatePath(`/projects/${id}`);
   revalidatePath("/projects");
   revalidatePath("/");
-  redirect(`/projects/${id}?project=saved`);
+  redirect(`/projects/${id}?project=saved${tab ? `&tab=${tab}` : ""}`);
 }

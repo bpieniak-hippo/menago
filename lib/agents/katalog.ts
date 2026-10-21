@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Katalog w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Zadanie: pilnujesz rocznic wydawnictw (np. premier starszych projektów),
 proponujesz akcje wokół starego katalogu i zbierasz okazje do licencji

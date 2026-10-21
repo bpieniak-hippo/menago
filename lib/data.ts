@@ -8,14 +8,20 @@ import {
 import type {
   Activity,
   Agent,
+  AgentSlug,
   Approval,
   Campaign,
   CampaignEmail,
   Post,
   Project,
+  ProjectItem,
+  Report,
+  Task,
   Track,
+  TrackItem,
   Trend,
   TrendScene,
+  TrendType,
 } from "./types";
 
 /**
@@ -33,7 +39,7 @@ export async function getProjects(): Promise<Project[]> {
     .select("*")
     .order("created_at", { ascending: true });
   if (error || !data || data.length === 0) return mockProjects;
-  return data as Project[];
+  return (data as Project[]).map((p) => ({ ...p, links: p.links ?? {} }));
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
@@ -47,7 +53,7 @@ export async function getProjectById(id: string): Promise<Project | null> {
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
-  return data as Project;
+  return { ...(data as Project), links: (data as Project).links ?? {} };
 }
 
 export async function getTracksForProject(projectId: string): Promise<Track[]> {
@@ -62,12 +68,70 @@ export async function getTracksForProject(projectId: string): Promise<Track[]> {
   return data as Track[];
 }
 
+/** Checklista (wokale/muzyka/DJ/inne) dla podanych utworów. */
+export async function getTrackItemsForTracks(
+  trackIds: string[],
+): Promise<TrackItem[]> {
+  if (!isSupabaseConfigured() || trackIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("track_items")
+    .select("*")
+    .in("track_id", trackIds)
+    .order("position", { ascending: true });
+  if (error || !data) return [];
+  return data as TrackItem[];
+}
+
+/** Dodatkowa checklista projektu (okładka, mastering, dystrybucja itp.). */
+export async function getProjectItems(projectId: string): Promise<ProjectItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_items")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("position", { ascending: true });
+  if (error || !data) return [];
+  return data as ProjectItem[];
+}
+
+/** Wszystkie utwory wszystkich projektów (do listy projektów z podglądem tracklisty). */
+export async function getAllTracks(): Promise<Track[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tracks")
+    .select("*")
+    .order("position", { ascending: true });
+  if (error || !data) return [];
+  return data as Track[];
+}
+
+/** Wszystkie elementy checklisty projektów (do listy projektów z podglądem akcji). */
+export async function getAllProjectItems(): Promise<ProjectItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_items")
+    .select("*")
+    .order("position", { ascending: true });
+  if (error || !data) return [];
+  return data as ProjectItem[];
+}
+
 export async function getAgents(): Promise<Agent[]> {
   if (!isSupabaseConfigured()) return mockAgents;
   const supabase = await createClient();
   const { data, error } = await supabase.from("agents").select("*");
   if (error || !data || data.length === 0) return mockAgents;
   return data as Agent[];
+}
+
+/** Jeden agent po slug (do strony szczegółów agenta). */
+export async function getAgentBySlug(slug: AgentSlug): Promise<Agent | null> {
+  const agents = await getAgents();
+  return agents.find((a) => a.slug === slug) ?? null;
 }
 
 export async function getPendingApprovals(): Promise<Approval[]> {
@@ -92,6 +156,102 @@ export async function getRecentActivity(limit = 15): Promise<Activity[]> {
     .limit(limit);
   if (error || !data || data.length === 0) return mockActivity;
   return data as Activity[];
+}
+
+/** Aktywność konkretnego agenta (do strony szczegółów agenta). */
+export async function getActivityForAgent(
+  slug: AgentSlug,
+  limit = 30,
+): Promise<Activity[]> {
+  if (!isSupabaseConfigured()) {
+    return mockActivity.filter((a) => a.agent_slug === slug);
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activity")
+    .select("*")
+    .eq("agent_slug", slug)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data as Activity[];
+}
+
+/** Pojedynczy wpis aktywności (do strony szczegółów). */
+export async function getActivityById(id: string): Promise<Activity | null> {
+  if (!isSupabaseConfigured()) {
+    return mockActivity.find((a) => a.id === id) ?? null;
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activity")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as Activity;
+}
+
+/** Pojedyncze zadanie (do strony szczegółów aktywności / archiwum). */
+export async function getTaskById(id: string): Promise<Task | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as Task;
+}
+
+/** Wszystkie zadania (Managera i innych agentów) — archiwum. */
+export async function getAllTasks(limit = 200): Promise<Task[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data as Task[];
+}
+
+/** Raporty napisane przez konkretnego agenta (tabela `reports`). */
+export async function getReportsForAgent(
+  slug: AgentSlug,
+  limit = 10,
+): Promise<Report[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reports")
+    .select("*")
+    .eq("agent_slug", slug)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data as Report[];
+}
+
+/** Propozycje (do zatwierdzenia/zdecydowane) utworzone przez konkretnego agenta. */
+export async function getApprovalsForAgent(
+  slug: AgentSlug,
+  limit = 20,
+): Promise<Approval[]> {
+  if (!isSupabaseConfigured()) {
+    return mockApprovals.filter((a) => a.agent_slug === slug);
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("approvals")
+    .select("*")
+    .eq("agent_slug", slug)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data as Approval[];
 }
 
 /** Treść ostatniego briefu dnia Agenta Managera (tabela `reports`), jeśli istnieje. */
@@ -156,8 +316,11 @@ export async function getPendingEmailApprovalsForCampaign(
   return data as Approval[];
 }
 
-/** Insighty Agenta Trendy, opcjonalnie filtrowane po scenie. */
-export async function getTrends(scene?: TrendScene): Promise<Trend[]> {
+/** Insighty Agenta Trendy, opcjonalnie filtrowane po scenie i/lub typie. */
+export async function getTrends(
+  scene?: TrendScene,
+  type?: TrendType,
+): Promise<Trend[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   let query = supabase
@@ -166,7 +329,28 @@ export async function getTrends(scene?: TrendScene): Promise<Trend[]> {
     .order("detected_at", { ascending: false })
     .limit(50);
   if (scene) query = query.eq("scene", scene);
+  if (type) query = query.eq("type", type);
   const { data, error } = await query;
+  if (error || !data) return [];
+  return data as Trend[];
+}
+
+/**
+ * Newsy o zespole: type="mention" ORAZ wszystko, czego `entity` wskazuje na
+ * sam zespół (np. gdy agent omyłkowo zapisał wzmiankę z innym typem) —
+ * odporne na niedokładne etykietowanie przez agenta.
+ */
+export async function getTeamMentions(): Promise<Trend[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("trends")
+    .select("*")
+    .or(
+      "type.eq.mention,entity.ilike.%funkmaster winio%,entity.ilike.%haipeson%",
+    )
+    .order("detected_at", { ascending: false })
+    .limit(50);
   if (error || !data) return [];
   return data as Trend[];
 }

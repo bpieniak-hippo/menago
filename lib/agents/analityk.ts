@@ -1,16 +1,24 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isInstagramConfigured, getAccountInsights, getRecentMediaViews } from "@/lib/instagram";
+import { isFacebookConfigured, getPageInsights } from "@/lib/facebook";
+import { isTikTokConfigured, getRecentVideoViews } from "@/lib/tiktok";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Analitykiem w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Zadanie: raportujesz wyniki — statystyki postów, kampanii mailowych
-(wysłane/odpowiedzi), postęp projektów.
+(wysłane/odpowiedzi), postęp projektów oraz realne wyświetlenia z Instagrama,
+fanpage'a Facebooka i TikToka (jeśli podłączone).
 
 Zasady:
-- Zbierz dane: read_projects, fetch_social_stats, read_campaign_stats.
-- Napisz zwięzły raport (3-6 zdań po polsku) i zapisz go write_report.
+- Zbierz dane: read_projects, fetch_social_stats, read_campaign_stats,
+  fetch_instagram_insights, fetch_facebook_insights, fetch_tiktok_insights.
+- Jeśli któraś platforma nie jest podłączona (not_configured), po prostu
+  wspomnij o tym krótko — nie traktuj tego jako błąd.
+- Napisz zwięzły raport (4-8 zdań po polsku), uwzględniając realne wyświetlenia
+  per platforma, i zapisz go write_report.
 - Nie twórz nowych zadań dla innych agentów — tylko raportuj.`;
 
 const TOOLS: Tool[] = [
@@ -43,6 +51,22 @@ const TOOLS: Tool[] = [
       properties: { content: { type: "string" } },
       required: ["content"],
     },
+  },
+  {
+    name: "fetch_instagram_insights",
+    description:
+      "Realne wyświetlenia/zasięg konta IG za ostatnie 7 dni + top ostatnich postów.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "fetch_facebook_insights",
+    description: "Realne wyświetlenia/odsłony fanpage'a Facebook za ostatnie 7 dni.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "fetch_tiktok_insights",
+    description: "Realne wyświetlenia ostatnich filmów na TikToku.",
+    input_schema: { type: "object", properties: {} },
   },
 ];
 
@@ -84,6 +108,34 @@ async function execTool(name: string, input: Record<string, unknown>) {
         if (row.replied_at) counts.replied += 1;
       }
       return counts;
+    }
+    case "fetch_instagram_insights": {
+      if (!isInstagramConfigured()) return { error: "not_configured" };
+      try {
+        const [account, media] = await Promise.all([
+          getAccountInsights(7),
+          getRecentMediaViews(10),
+        ]);
+        return { account, recent_media: media };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+    case "fetch_facebook_insights": {
+      if (!isFacebookConfigured()) return { error: "not_configured" };
+      try {
+        return await getPageInsights(7);
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+    case "fetch_tiktok_insights": {
+      if (!isTikTokConfigured()) return { error: "not_configured" };
+      try {
+        return await getRecentVideoViews();
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
     }
     case "write_report": {
       const today = new Date();
@@ -139,6 +191,7 @@ export async function runWeeklyReport(): Promise<AnalitykRunResult> {
   return run(
     `Przygotuj raport tygodniowy: sprawdź projekty, statystyki postów i kampanii ` +
       `mailowych (read_projects, fetch_social_stats, read_campaign_stats bez project_id ` +
-      `— dla wszystkiego), napisz podsumowanie i zapisz je (write_report).`,
+      `— dla wszystkiego), a także realne wyświetlenia (fetch_instagram_insights, ` +
+      `fetch_facebook_insights, fetch_tiktok_insights), napisz podsumowanie i zapisz je (write_report).`,
   );
 }

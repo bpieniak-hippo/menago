@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runToolLoop } from "./loop";
 
 const SYSTEM_PROMPT = `Jesteś Agentem Wydawniczym w aplikacji Menago — panelu do prowadzenia
-kariery muzycznej Haipeson × Winiu.
+kariery muzycznej Funkmaster Winio x Haipeson (gatunek: Hip-Hop boombap).
 
 Zadanie: pilnujesz metadanych, kredytów, ISRC, checklist dystrybucji,
 przypominasz o pitchu do playlist redakcyjnych przed premierą i o rejestracji

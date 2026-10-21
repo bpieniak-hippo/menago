@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       body:
         `Cześć ${contact.name},\n\nChciałem/am nawiązać do poprzedniej wiadomości ` +
         `sprzed tygodnia — czy miał/a Pan/Pani okazję się z nią zapoznać?\n\n` +
-        `Pozdrawiam,\nHaipeson × Winiu`,
+        `Pozdrawiam,\nFunkmaster Winio x Haipeson`,
     });
 
     await supabase

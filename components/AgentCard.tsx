@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Agent } from "@/lib/types";
 
 const STATUS_STYLES: Record<Agent["status"], string> = {
@@ -8,7 +9,10 @@ const STATUS_STYLES: Record<Agent["status"], string> = {
 
 export default function AgentCard({ agent }: { agent: Agent }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Link
+      href={`/agents/${agent.slug}`}
+      className="block rounded-xl border border-border bg-card p-4 transition hover:border-accent/50"
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold">{agent.name}</h3>
@@ -41,6 +45,6 @@ export default function AgentCard({ agent }: { agent: Agent }) {
           })}
         </p>
       )}
-    </div>
+    </Link>
   );
 }

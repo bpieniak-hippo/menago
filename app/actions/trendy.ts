@@ -20,6 +20,36 @@ export async function triggerTrendyScan() {
   redirect(`/trendy?trendy=${outcome}`);
 }
 
+export async function addMentionManually(formData: FormData) {
+  if (!isAdminConfigured()) redirect("/trendy?view=mentions&trendy=no_db");
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) redirect("/trendy?view=mentions&trendy=missing_mention");
+
+  const source = String(formData.get("source") ?? "").trim() || null;
+  const url = String(formData.get("url") ?? "").trim() || null;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("trends").insert({
+    scene: "pl_rap",
+    entity: "Funkmaster Winio x Haipeson",
+    type: "mention",
+    title,
+    source,
+    url,
+    notes,
+  });
+
+  if (error) {
+    console.error("addMentionManually insert error:", error);
+    redirect("/trendy?view=mentions&trendy=mention_error");
+  }
+
+  revalidatePath("/trendy");
+  redirect("/trendy?view=mentions&trendy=mention_added");
+}
+
 export async function proposePostFromTrend(formData: FormData) {
   const trendId = String(formData.get("trend_id") ?? "");
   if (!trendId || !isAdminConfigured()) redirect("/trendy");

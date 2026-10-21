@@ -14,7 +14,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Menago — sztab Haipeson × Winiu",
+  title: "Menago — sztab Funkmaster Winio x Haipeson",
   description: "Panel agentów do prowadzenia kariery muzycznej",
 };
 

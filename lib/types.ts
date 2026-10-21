@@ -23,6 +23,13 @@ export interface Agent {
   last_run_at: string | null;
 }
 
+export type StreamingPlatform =
+  | "spotify"
+  | "apple_music"
+  | "youtube_music"
+  | "tidal"
+  | "soundcloud";
+
 export interface Project {
   id: string;
   name: string;
@@ -31,29 +38,43 @@ export interface Project {
   progress: number;
   release_date: string | null;
   notes: string | null;
+  links: Partial<Record<StreamingPlatform, string>>;
   created_at: string;
 }
-
-export type TrackStatus =
-  | "pomysł"
-  | "tekst"
-  | "nagrany"
-  | "zmiksowany"
-  | "zmasterowany"
-  | "gotowy";
 
 export interface Track {
   id: string;
   project_id: string;
   position: number;
   title: string;
-  beat_by: string | null;
-  performers: string | null;
-  written_by: string | null;
-  recorded_by: string | null;
-  additional_musicians: string | null;
-  status: TrackStatus;
+  beat_name: string | null;
   notes: string | null;
+  created_at: string;
+}
+
+export type ItemStatus = "zrobione" | "do_zrobienia" | "nie_dotyczy";
+export type TrackItemCategory = "wokale" | "muzyka" | "dj" | "inne";
+
+export interface TrackItem {
+  id: string;
+  track_id: string;
+  category: TrackItemCategory;
+  label: string;
+  assignee: string | null;
+  status: ItemStatus;
+  note: string | null;
+  position: number;
+  created_at: string;
+}
+
+export interface ProjectItem {
+  id: string;
+  project_id: string;
+  label: string;
+  assignee: string | null;
+  status: ItemStatus;
+  note: string | null;
+  position: number;
   created_at: string;
 }
 
@@ -96,6 +117,15 @@ export interface Activity {
   message: string;
   ref_type: string | null;
   ref_id: string | null;
+  created_at: string;
+}
+
+export interface Report {
+  id: string;
+  agent_slug: AgentSlug;
+  period_start: string;
+  period_end: string;
+  content: string;
   created_at: string;
 }
 
@@ -164,7 +194,13 @@ export interface Post {
 }
 
 export type TrendScene = "pl_rap" | "us";
-export type TrendType = "release" | "chart" | "collab" | "viral" | "other";
+export type TrendType =
+  | "release"
+  | "chart"
+  | "collab"
+  | "viral"
+  | "mention"
+  | "other";
 
 export interface Trend {
   id: string;

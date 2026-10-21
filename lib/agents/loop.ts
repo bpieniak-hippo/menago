@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Tool, MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { ToolUnion, MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 // Realny, aktualny model Sonnet (w MENAGO_SPEC.md jako placeholder figuruje
 // "claude-sonnet-5-5" — na dziś takiego modelu nie ma, więc używamy
@@ -8,7 +8,7 @@ export const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 
 interface RunToolLoopArgs {
   system: string;
-  tools: Tool[];
+  tools: ToolUnion[];
   execTool: (name: string, input: Record<string, unknown>) => Promise<unknown>;
   userPrompt: string;
   maxTurns?: number;

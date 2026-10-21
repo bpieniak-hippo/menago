@@ -1,7 +1,13 @@
-import Link from "next/link";
 import Header from "@/components/Header";
-import { getProjects } from "@/lib/data";
+import ProjectListEntry from "@/components/ProjectListEntry";
+import {
+  getAllProjectItems,
+  getAllTracks,
+  getProjects,
+  getTrackItemsForTracks,
+} from "@/lib/data";
 import { createProject } from "@/app/actions/projects";
+import { buildProjectSummary, groupProjectsByType } from "@/lib/projectSummary";
 
 const PROJECTS_MESSAGES: Record<string, string> = {
   no_db: "Tworzenie projektów wymaga skonfigurowanego Supabase (service role).",
@@ -19,6 +25,10 @@ interface ProjectsPageProps {
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const params = await searchParams;
   const projects = await getProjects();
+  const allTracks = await getAllTracks();
+  const allTrackItems = await getTrackItemsForTracks(allTracks.map((t) => t.id));
+  const allProjectItems = await getAllProjectItems();
+  const groups = groupProjectsByType(projects);
   const banner = params.projects && PROJECTS_MESSAGES[params.projects];
 
   return (
@@ -32,32 +42,55 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
         )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <section>
-            <h2 className="mb-3 text-base font-semibold">Projekty</h2>
+          <section className="flex flex-col gap-6">
             {projects.length === 0 ? (
               <p className="text-sm text-muted">Brak projektów.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {projects.map((project) => (
-                  <Link key={project.id} href={`/projects/${project.id}`}>
-                    <div className="rounded-xl border border-border bg-card p-4 transition hover:border-accent/50">
-                      <h3 className="text-sm font-semibold">{project.name}</h3>
-                      <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-muted">
-                        {project.type} · {project.stage}
+              groups.map((group) => (
+                <div key={group.key}>
+                  <h2 className="mb-3 text-base font-semibold">{group.label}</h2>
+                  {group.inProgress.length > 0 && (
+                    <div className="mb-4">
+                      <p className="mb-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+                        W trakcie
                       </p>
-                      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border">
-                        <div
-                          className="h-full rounded-full bg-status-progress"
-                          style={{ width: `${project.progress}%` }}
-                        />
+                      <div className="flex flex-col gap-3">
+                        {group.inProgress.map((project) => (
+                          <ProjectListEntry
+                            key={project.id}
+                            summary={buildProjectSummary(
+                              project,
+                              allTracks,
+                              allTrackItems,
+                              allProjectItems,
+                            )}
+                          />
+                        ))}
                       </div>
-                      <p className="mt-2 font-mono text-[11px] text-muted">
-                        {project.progress}% ukończone
-                      </p>
                     </div>
-                  </Link>
-                ))}
-              </div>
+                  )}
+                  {group.released.length > 0 && (
+                    <div>
+                      <p className="mb-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+                        Wydane
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        {group.released.map((project) => (
+                          <ProjectListEntry
+                            key={project.id}
+                            summary={buildProjectSummary(
+                              project,
+                              allTracks,
+                              allTrackItems,
+                              allProjectItems,
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </section>
 

@@ -8,10 +8,12 @@ import { decideApproval } from "@/lib/approvals";
 
 export async function generateCampaign(formData: FormData) {
   const projectId = String(formData.get("project_id") ?? "");
+  const returnTo =
+    String(formData.get("return_to") ?? "") || `/promo?project=${projectId}`;
   if (!projectId) redirect("/promo");
 
   if (!isAdminConfigured()) {
-    redirect(`/promo?project=${projectId}&promo=no_db`);
+    redirect(`${returnTo}&promo=no_db`);
   }
 
   let outcome: "ok" | "no_key" | "error" = "ok";
@@ -23,15 +25,18 @@ export async function generateCampaign(formData: FormData) {
   }
 
   revalidatePath("/promo");
-  redirect(`/promo?project=${projectId}&promo=${outcome}`);
+  revalidatePath(returnTo.split("?")[0]);
+  redirect(`${returnTo}&promo=${outcome}`);
 }
 
 export async function approveAllCampaignEmails(formData: FormData) {
   const campaignId = String(formData.get("campaign_id") ?? "");
   const projectId = String(formData.get("project_id") ?? "");
+  const returnTo =
+    String(formData.get("return_to") ?? "") || `/promo?project=${projectId}`;
 
   if (!campaignId || !isAdminConfigured()) {
-    redirect(`/promo?project=${projectId}`);
+    redirect(returnTo);
   }
 
   const supabase = createAdminClient();
@@ -48,5 +53,6 @@ export async function approveAllCampaignEmails(formData: FormData) {
 
   revalidatePath("/promo");
   revalidatePath("/");
-  redirect(`/promo?project=${projectId}&approvals=approved`);
+  revalidatePath(returnTo.split("?")[0]);
+  redirect(`${returnTo}&approvals=approved`);
 }

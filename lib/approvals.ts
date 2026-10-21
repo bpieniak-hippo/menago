@@ -108,7 +108,7 @@ async function executeEmailApproval(approval: any): Promise<DecisionResult> {
       .update({ status: "approved", decided_at: now })
       .eq("id", approval.id);
     await logActivity(
-      "promo",
+      approval.agent_slug,
       `Zatwierdzono mail „${approval.title}”, ale Gmail nie jest podłączony (brak GOOGLE_REFRESH_TOKEN) — wyślij ręcznie.`,
       "email",
       emailId,
@@ -126,7 +126,7 @@ async function executeEmailApproval(approval: any): Promise<DecisionResult> {
       .update({
         status: "sent",
         gmail_message_id: sent.messageId,
-        gmail_thread_id: sent.threadId,
+        gmail_thread_id: sent.threadId ?? email.gmail_thread_id,
         sent_at: now,
       })
       .eq("id", emailId);
@@ -135,7 +135,7 @@ async function executeEmailApproval(approval: any): Promise<DecisionResult> {
       .update({ status: "executed", decided_at: now })
       .eq("id", approval.id);
     await logActivity(
-      "promo",
+      approval.agent_slug,
       `Wysłano mail: „${approval.title}”.`,
       "email",
       emailId,
@@ -148,7 +148,7 @@ async function executeEmailApproval(approval: any): Promise<DecisionResult> {
       .update({ status: "failed", decided_at: now })
       .eq("id", approval.id);
     await logActivity(
-      "promo",
+      approval.agent_slug,
       `Błąd wysyłki maila „${approval.title}”: ${(err as Error).message}`,
       "email",
       emailId,

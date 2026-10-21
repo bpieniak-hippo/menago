@@ -1,6 +1,6 @@
 # Menago — panel agentów do prowadzenia kariery muzycznej
 
-> Specyfikacja dla Claude Code. Projekt: **Haipeson × Winiu**.
+> Specyfikacja dla Claude Code. Projekt: **Funkmaster Winio x Haipeson**.
 > Cel: dashboard webowy, w którym **Agent Manager** koordynuje mniejsze agenty (Album, Social, Promo, Wydawniczy, Analityk, Katalog, Trendy). Każde działanie wychodzące na zewnątrz (mail, post) przechodzi przez **kolejkę zatwierdzeń**.
 
 ---
@@ -146,7 +146,7 @@ Włącz RLS; na start jeden użytkownik (Bartek) + opcjonalnie drugi (Winiu).
 ## 7. Ekrany (zgodnie z mockupem)
 
 ### `/` — Dashboard
-- Nagłówek: **HAIPESON × WINIU · Menago**, nawigacja: Dashboard, Projekty, Agenci, Promo, Kalendarz, Trendy.
+- Nagłówek: **FUNKMASTER WINIO X HAIPESON · Menago**, nawigacja: Dashboard, Projekty, Agenci, Promo, Kalendarz, Trendy.
 - **Brief Managera**: nagłówek z liczbą rzeczy do decyzji, krótki opis, pole „Wydaj polecenie managerowi…”, lista 3 priorytetów.
 - **Agenci**: siatka kart (nazwa, rola, status: `w toku` / `czeka na Ciebie` / `w gotowości`, bieżące zadanie, pasek postępu, ostatnia aktywność).
 - **Do zatwierdzenia**: lista z przyciskami Podgląd / Zatwierdź.
